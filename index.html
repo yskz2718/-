@@ -188,7 +188,26 @@ board[tx][ty]=p;
 board[sx][sy]=".";
 
 // 王手チェック
-let safe=!isCheck(isUpper(p)?"P":"p");
+function isLegalMove(sx, sy, tx, ty) {
+  let p = board[sx][sy];
+
+  if (!canMove(p, sx, sy, tx, ty)) return false;
+
+  // 仮移動
+  let captured = board[tx][ty];
+  board[tx][ty] = p;
+  board[sx][sy] = ".";
+
+  // 自分の王だけチェック（ここが重要）
+  let player = isUpper(p) ? "P" : "p";
+  let safe = !isCheck(player);
+
+  // 元に戻す
+  board[sx][sy] = p;
+  board[tx][ty] = captured;
+
+  return safe;
+}
 
 // 戻す
 board[sx][sy]=p;
