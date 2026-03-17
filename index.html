@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>将棋 完全版</title>
+<title>将棋 修正版</title>
 <style>
 body { text-align:center; font-family:sans-serif; }
 table { border-collapse: collapse; margin:auto; }
@@ -10,14 +10,19 @@ td {
   width:50px; height:50px;
   border:1px solid black;
   cursor:pointer;
-  font-size:18px;
+  font-size:20px;
 }
 .selected { background:yellow; }
+
+/* 後手の駒を回転 */
+.enemy {
+  transform: rotate(180deg);
+}
 </style>
 </head>
 <body>
 
-<h2>将棋（完全版）</h2>
+<h2>将棋（修正版）</h2>
 <p id="turn"></p>
 <p id="status"></p>
 
@@ -76,9 +81,18 @@ let tr=document.createElement("tr");
 for(let j=0;j<9;j++){
 let td=document.createElement("td");
 let p=board[i][j];
-td.textContent=p==="."?"":PIECES[p];
+
+if(p!=="."){
+td.textContent=PIECES[p];
+if(!isUpper(p)) td.classList.add("enemy");
+}
+
 td.onclick=()=>clickBoard(i,j);
-if(selected && selected[0]==i && selected[1]==j) td.classList.add("selected");
+
+if(selected && selected[0]==i && selected[1]==j){
+td.classList.add("selected");
+}
+
 tr.appendChild(td);
 }
 t.appendChild(tr);
@@ -150,17 +164,37 @@ if(p.startsWith("+")) return (absX===1&&dy===0)||(absY===1&&dx===0);
 return false;
 }
 
-function simulateMove(sx,sy,tx,ty){
-let tmp=board[tx][ty];
-let p=board[sx][sy];
-board[tx][ty]=p;
-board[sx][sy]=".";
-return tmp;
+function inZone(player,x){
+return player==="P" ? x<=2 : x>=6;
 }
 
-function undoMove(sx,sy,tx,ty,tmp){
-board[sx][sy]=board[tx][ty];
+function shouldPromote(p,sx,tx){
+if(p.startsWith("+")) return false;
+let b=base(p);
+if(!["P","L","N","S","B","R"].includes(b.toUpperCase())) return false;
+
+let player = isUpper(p) ? "P" : "p";
+
+return inZone(player,sx) || inZone(player,tx);
+}
+
+function isLegalMove(sx,sy,tx,ty){
+let p=board[sx][sy];
+if(!canMove(p,sx,sy,tx,ty)) return false;
+
+// 仮移動
+let tmp=board[tx][ty];
+board[tx][ty]=p;
+board[sx][sy]=".";
+
+// 王手チェック
+let safe=!isCheck(isUpper(p)?"P":"p");
+
+// 戻す
+board[sx][sy]=p;
 board[tx][ty]=tmp;
+
+return safe;
 }
 
 function findKing(pl){
@@ -186,17 +220,6 @@ if(canMove(p,i,j,k[0],k[1])) return true;
 return false;
 }
 
-function isLegalMove(sx,sy,tx,ty){
-let p=board[sx][sy];
-if(!canMove(p,sx,sy,tx,ty)) return false;
-
-let tmp=simulateMove(sx,sy,tx,ty);
-let safe=!isCheck(isUpper(p)?"P":"p");
-undoMove(sx,sy,tx,ty,tmp);
-
-return safe;
-}
-
 function isCheckmate(pl){
 if(!isCheck(pl)) return false;
 
@@ -215,16 +238,6 @@ if(isLegalMove(i,j,x,y)) return false;
 }
 }
 return true;
-}
-
-function promoteIfNeeded(p,tx){
-if(p.startsWith("+")) return p;
-if(!["P","L","N","S","B","R","p","l","n","s","b","r"].includes(p)) return p;
-
-if(confirm("成りますか？")){
-return "+"+p;
-}
-return p;
 }
 
 function clickBoard(x,y){
@@ -256,14 +269,22 @@ if(isLegalMove(sx,sy,x,y)){
 if(board[x][y]!=="."){
 hands[currentPlayer].push(base(board[x][y]).toUpperCase());
 }
+
 let moved=board[sx][sy];
-moved=promoteIfNeeded(moved,x);
+
+// 成り判定修正（ここ重要）
+if(shouldPromote(moved,sx,x)){
+if(confirm("成りますか？")){
+moved="+"+moved;
+}
+}
 
 board[x][y]=moved;
 board[sx][sy]=".";
 
 currentPlayer=currentPlayer==="P"?"p":"P";
 }
+
 selected=null;
 }
 
