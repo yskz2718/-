@@ -1,1 +1,116 @@
-あいうえお
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>簡易将棋</title>
+<style>
+  body { font-family: sans-serif; text-align: center; }
+  table { border-collapse: collapse; margin: auto; }
+  td {
+    width: 50px;
+    height: 50px;
+    border: 1px solid black;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  .selected { background-color: yellow; }
+</style>
+</head>
+<body>
+
+<h1>簡易将棋</h1>
+<p id="turn">先手の番</p>
+<table id="board"></table>
+
+<script>
+const SIZE = 9;
+let board = [];
+let currentPlayer = "P"; // P:先手, p:後手
+let selected = null;
+
+function initBoard() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill("."));
+
+  board[0][4] = "k";
+  board[8][4] = "K";
+
+  for (let i = 0; i < SIZE; i++) {
+    board[2][i] = "p";
+    board[6][i] = "P";
+  }
+}
+
+function drawBoard() {
+  const table = document.getElementById("board");
+  table.innerHTML = "";
+
+  for (let i = 0; i < SIZE; i++) {
+    const tr = document.createElement("tr");
+    for (let j = 0; j < SIZE; j++) {
+      const td = document.createElement("td");
+      td.textContent = board[i][j] === "." ? "" : board[i][j];
+      td.onclick = () => handleClick(i, j);
+
+      if (selected && selected[0] === i && selected[1] === j) {
+        td.classList.add("selected");
+      }
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+
+  document.getElementById("turn").textContent =
+    currentPlayer === "P" ? "先手の番" : "後手の番";
+}
+
+function isValidMove(piece, sx, sy, tx, ty) {
+  const dx = tx - sx;
+  const dy = ty - sy;
+
+  // 歩
+  if (piece.toLowerCase() === "p") {
+    return dx === (currentPlayer === "P" ? -1 : 1) && dy === 0;
+  }
+
+  // 王
+  if (piece.toLowerCase() === "k") {
+    return Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+  }
+
+  return false;
+}
+
+function handleClick(x, y) {
+  const piece = board[x][y];
+
+  if (!selected) {
+    if (piece === ".") return;
+
+    if (currentPlayer === "P" && piece === piece.toLowerCase()) return;
+    if (currentPlayer === "p" && piece === piece.toUpperCase()) return;
+
+    selected = [x, y];
+  } else {
+    const [sx, sy] = selected;
+    const movingPiece = board[sx][sy];
+
+    if (isValidMove(movingPiece, sx, sy, x, y)) {
+      board[x][y] = movingPiece;
+      board[sx][sy] = ".";
+
+      currentPlayer = currentPlayer === "P" ? "p" : "P";
+    }
+
+    selected = null;
+  }
+
+  drawBoard();
+}
+
+initBoard();
+drawBoard();
+</script>
+
+</body>
+</html>
