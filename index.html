@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>将棋 修正版</title>
+<title>将棋 完全安定版</title>
 <style>
 body { text-align:center; font-family:sans-serif; }
 table { border-collapse: collapse; margin:auto; }
@@ -15,14 +15,12 @@ td {
 .selected { background:yellow; }
 
 /* 後手の駒を回転 */
-.enemy {
-  transform: rotate(180deg);
-}
+.enemy { transform: rotate(180deg); }
 </style>
 </head>
 <body>
 
-<h2>将棋（修正版）</h2>
+<h2>将棋（完全版）</h2>
 <p id="turn"></p>
 <p id="status"></p>
 
@@ -36,11 +34,12 @@ td {
 
 <script>
 const SIZE = 9;
+
 let board = [];
 let currentPlayer = "P";
 let selected = null;
 let selectedHand = null;
-let hands = {P:[], p:[]};
+let hands = { P: [], p: [] };
 
 const PIECES = {
 "K":"王","R":"飛","B":"角","G":"金","S":"銀","N":"桂","L":"香","P":"歩",
@@ -76,69 +75,84 @@ updateStatus();
 function drawBoard(){
 let t=document.getElementById("board");
 t.innerHTML="";
+
 for(let i=0;i<9;i++){
 let tr=document.createElement("tr");
+
 for(let j=0;j<9;j++){
 let td=document.createElement("td");
 let p=board[i][j];
 
-if(p!=="."){
-td.textContent=PIECES[p];
+if(p !== "."){
+td.textContent = PIECES[p];
 if(!isUpper(p)) td.classList.add("enemy");
 }
 
-td.onclick=()=>clickBoard(i,j);
+td.onclick = () => clickBoard(i,j);
 
-if(selected && selected[0]==i && selected[1]==j){
+if(selected && selected[0]===i && selected[1]===j){
 td.classList.add("selected");
 }
 
 tr.appendChild(td);
 }
+
 t.appendChild(tr);
 }
+
 document.getElementById("turn").textContent =
-currentPlayer==="P"?"先手の番":"後手の番";
+currentPlayer==="P" ? "先手の番" : "後手の番";
 }
 
 function drawHands(){
 ["P","p"].forEach(pl=>{
 let div=document.getElementById("hand"+pl);
 div.innerHTML="";
+
 hands[pl].forEach((p,i)=>{
 let btn=document.createElement("button");
-btn.textContent=PIECES[p];
-btn.onclick=()=>{
-if(pl===currentPlayer){
-selectedHand=[pl,i];
-selected=null;
+btn.textContent = PIECES[p];
+
+btn.onclick = ()=>{
+if(pl === currentPlayer){
+selectedHand = [pl, i];
+selected = null;
 }
 };
+
 div.appendChild(btn);
 });
 });
 }
 
 function isEnemy(a,b){
-if(b===".") return false;
-return isUpper(a)!==isUpper(b);
+if(b === ".") return false;
+return isUpper(a) !== isUpper(b);
 }
 
 function pathClear(sx,sy,tx,ty){
-let dx=Math.sign(tx-sx), dy=Math.sign(ty-sy);
-let x=sx+dx, y=sy+dy;
-while(x!==tx || y!==ty){
-if(board[x][y]!==".") return false;
-x+=dx; y+=dy;
+let dx = Math.sign(tx-sx);
+let dy = Math.sign(ty-sy);
+
+let x = sx+dx;
+let y = sy+dy;
+
+while(x !== tx || y !== ty){
+if(board[x][y] !== ".") return false;
+x += dx;
+y += dy;
 }
 return true;
 }
 
 function canMove(p,sx,sy,tx,ty){
-let dx=tx-sx, dy=ty-sy;
-let absX=Math.abs(dx), absY=Math.abs(dy);
-let b=base(p);
-let f=forward(p);
+let dx = tx-sx;
+let dy = ty-sy;
+let absX = Math.abs(dx);
+let absY = Math.abs(dy);
+
+let b = base(p);
+let f = forward(p);
 
 if(p.startsWith("+") && b!=="R" && b!=="B"){
 return (dx===f && Math.abs(dy)<=1)||(dx===0&&absY===1)||(dx===-f&&dy===0);
@@ -170,50 +184,13 @@ return player==="P" ? x<=2 : x>=6;
 
 function shouldPromote(p,sx,tx){
 if(p.startsWith("+")) return false;
-let b=base(p);
-if(!["P","L","N","S","B","R"].includes(b.toUpperCase())) return false;
+
+let b = base(p).toUpperCase();
+if(!["P","L","N","S","B","R"].includes(b)) return false;
 
 let player = isUpper(p) ? "P" : "p";
 
 return inZone(player,sx) || inZone(player,tx);
-}
-
-function isLegalMove(sx,sy,tx,ty){
-let p=board[sx][sy];
-if(!canMove(p,sx,sy,tx,ty)) return false;
-
-// 仮移動
-let tmp=board[tx][ty];
-board[tx][ty]=p;
-board[sx][sy]=".";
-
-// 王手チェック
-function isLegalMove(sx, sy, tx, ty) {
-  let p = board[sx][sy];
-
-  if (!canMove(p, sx, sy, tx, ty)) return false;
-
-  // 仮移動
-  let captured = board[tx][ty];
-  board[tx][ty] = p;
-  board[sx][sy] = ".";
-
-  // 自分の王だけチェック（ここが重要）
-  let player = isUpper(p) ? "P" : "p";
-  let safe = !isCheck(player);
-
-  // 元に戻す
-  board[sx][sy] = p;
-  board[tx][ty] = captured;
-
-  return safe;
-}
-
-// 戻す
-board[sx][sy]=p;
-board[tx][ty]=tmp;
-
-return safe;
 }
 
 function findKing(pl){
@@ -226,17 +203,37 @@ if(pl==="p" && board[i][j]==="k") return [i,j];
 }
 
 function isCheck(pl){
-let k=findKing(pl);
+let k = findKing(pl);
 if(!k) return false;
 
 for(let i=0;i<9;i++){
 for(let j=0;j<9;j++){
-let p=board[i][j];
-if(p==="."||!isEnemy(pl==="P"?"K":"k",p)) continue;
+let p = board[i][j];
+
+if(p==="." || !isEnemy(pl==="P"?"K":"k", p)) continue;
+
 if(canMove(p,i,j,k[0],k[1])) return true;
 }
 }
 return false;
+}
+
+function isLegalMove(sx,sy,tx,ty){
+let p = board[sx][sy];
+if(!canMove(p,sx,sy,tx,ty)) return false;
+
+let captured = board[tx][ty];
+
+board[tx][ty] = p;
+board[sx][sy] = ".";
+
+let player = isUpper(p) ? "P" : "p";
+let safe = !isCheck(player);
+
+board[sx][sy] = p;
+board[tx][ty] = captured;
+
+return safe;
 }
 
 function isCheckmate(pl){
@@ -245,6 +242,7 @@ if(!isCheck(pl)) return false;
 for(let i=0;i<9;i++){
 for(let j=0;j<9;j++){
 let p=board[i][j];
+
 if(p===".") continue;
 if(pl==="P" && !isUpper(p)) continue;
 if(pl==="p" && isUpper(p)) continue;
@@ -265,9 +263,12 @@ if(selectedHand){
 if(board[x][y]==="."){
 let [pl,i]=selectedHand;
 let p=hands[pl][i];
-board[x][y]= currentPlayer==="P"?p:p.toLowerCase();
+
+board[x][y] = (currentPlayer==="P") ? p : p.toLowerCase();
+
 hands[pl].splice(i,1);
-currentPlayer=currentPlayer==="P"?"p":"P";
+
+currentPlayer = currentPlayer==="P" ? "p" : "P";
 }
 selectedHand=null;
 draw();
@@ -278,30 +279,32 @@ let p=board[x][y];
 
 if(!selected){
 if(p===".") return;
+
 if(currentPlayer==="P" && !isUpper(p)) return;
 if(currentPlayer==="p" && isUpper(p)) return;
+
 selected=[x,y];
 }else{
 let [sx,sy]=selected;
 
 if(isLegalMove(sx,sy,x,y)){
-if(board[x][y]!=="."){
+
+if(board[x][y] !== "."){
 hands[currentPlayer].push(base(board[x][y]).toUpperCase());
 }
 
-let moved=board[sx][sy];
+let moved = board[sx][sy];
 
-// 成り判定修正（ここ重要）
 if(shouldPromote(moved,sx,x)){
 if(confirm("成りますか？")){
-moved="+"+moved;
+moved = "+" + moved;
 }
 }
 
-board[x][y]=moved;
-board[sx][sy]=".";
+board[x][y] = moved;
+board[sx][sy] = ".";
 
-currentPlayer=currentPlayer==="P"?"p":"P";
+currentPlayer = currentPlayer==="P" ? "p" : "P";
 }
 
 selected=null;
@@ -312,11 +315,14 @@ draw();
 
 function updateStatus(){
 let text="";
-if(isCheck(currentPlayer)) text+="王手！ ";
+
+if(isCheck(currentPlayer)) text += "王手！ ";
+
 if(isCheckmate(currentPlayer)){
-text="詰み！ "+(currentPlayer==="P"?"後手":"先手")+"の勝ち";
+text = "詰み！ " + (currentPlayer==="P"?"後手":"先手") + "の勝ち";
 }
-document.getElementById("status").textContent=text;
+
+document.getElementById("status").textContent = text;
 }
 
 init();
