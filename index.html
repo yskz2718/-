@@ -2,56 +2,67 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>簡易将棋</title>
+<title>将棋（全駒対応）</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
+  body { text-align: center; font-family: sans-serif; }
   table { border-collapse: collapse; margin: auto; }
   td {
     width: 50px;
     height: 50px;
     border: 1px solid black;
-    font-size: 24px;
+    font-size: 20px;
     cursor: pointer;
   }
-  .selected { background-color: yellow; }
+  .selected { background: yellow; }
 </style>
 </head>
 <body>
 
-<h1>簡易将棋</h1>
-<p id="turn">先手の番</p>
+<h1>将棋（全駒）</h1>
+<p id="turn"></p>
 <table id="board"></table>
 
 <script>
 const SIZE = 9;
 let board = [];
-let currentPlayer = "P"; // P:先手, p:後手
+let currentPlayer = "P";
 let selected = null;
 
+// 駒表示
+const PIECES = {
+  "K":"王","R":"飛","B":"角","G":"金","S":"銀","N":"桂","L":"香","P":"歩",
+  "k":"玉","r":"飛","b":"角","g":"金","s":"銀","n":"桂","l":"香","p":"歩"
+};
+
 function initBoard() {
-  board = Array.from({ length: SIZE }, () => Array(SIZE).fill("."));
+  board = Array.from({length: SIZE}, () => Array(SIZE).fill("."));
 
-  board[0][4] = "k";
-  board[8][4] = "K";
+  // 後手
+  board[0] = ["l","n","s","g","k","g","s","n","l"];
+  board[1][1] = "r";
+  board[1][7] = "b";
+  for(let i=0;i<9;i++) board[2][i] = "p";
 
-  for (let i = 0; i < SIZE; i++) {
-    board[2][i] = "p";
-    board[6][i] = "P";
-  }
+  // 先手
+  board[8] = ["L","N","S","G","K","G","S","N","L"];
+  board[7][7] = "R";
+  board[7][1] = "B";
+  for(let i=0;i<9;i++) board[6][i] = "P";
 }
 
 function drawBoard() {
   const table = document.getElementById("board");
   table.innerHTML = "";
 
-  for (let i = 0; i < SIZE; i++) {
-    const tr = document.createElement("tr");
-    for (let j = 0; j < SIZE; j++) {
-      const td = document.createElement("td");
-      td.textContent = board[i][j] === "." ? "" : board[i][j];
-      td.onclick = () => handleClick(i, j);
+  for(let i=0;i<SIZE;i++){
+    let tr = document.createElement("tr");
+    for(let j=0;j<SIZE;j++){
+      let td = document.createElement("td");
+      let piece = board[i][j];
+      td.textContent = piece==="." ? "" : PIECES[piece];
+      td.onclick = ()=>handleClick(i,j);
 
-      if (selected && selected[0] === i && selected[1] === j) {
+      if(selected && selected[0]===i && selected[1]===j){
         td.classList.add("selected");
       }
 
@@ -61,45 +72,105 @@ function drawBoard() {
   }
 
   document.getElementById("turn").textContent =
-    currentPlayer === "P" ? "先手の番" : "後手の番";
+    currentPlayer==="P" ? "先手の番" : "後手の番";
 }
 
-function isValidMove(piece, sx, sy, tx, ty) {
+function isEnemy(p1, p2){
+  if(p2 === ".") return false;
+  return (p1 === p1.toUpperCase()) !== (p2 === p2.toUpperCase());
+}
+
+function pathClear(sx,sy,tx,ty){
+  let dx = Math.sign(tx-sx);
+  let dy = Math.sign(ty-sy);
+  let x = sx+dx, y = sy+dy;
+
+  while(x !== tx || y !== ty){
+    if(board[x][y] !== ".") return false;
+    x += dx;
+    y += dy;
+  }
+  return true;
+}
+
+function isValidMove(piece, sx, sy, tx, ty){
   const dx = tx - sx;
   const dy = ty - sy;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
 
-  // 歩
-  if (piece.toLowerCase() === "p") {
-    return dx === (currentPlayer === "P" ? -1 : 1) && dy === 0;
-  }
+  const forward = (piece === piece.toUpperCase()) ? -1 : 1;
 
   // 王
-  if (piece.toLowerCase() === "k") {
-    return Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+  if(piece.toLowerCase()==="k"){
+    return absX<=1 && absY<=1;
+  }
+
+  // 金
+  if(piece.toLowerCase()==="g"){
+    return (
+      (dx===forward && Math.abs(dy)<=1) ||
+      (dx===0 && absY===1) ||
+      (dx===-forward && dy===0)
+    );
+  }
+
+  // 銀
+  if(piece.toLowerCase()==="s"){
+    return (
+      (dx===forward && Math.abs(dy)<=1) ||
+      (dx===-forward && absY===1)
+    );
+  }
+
+  // 桂
+  if(piece.toLowerCase()==="n"){
+    return dx===2*forward && absY===1;
+  }
+
+  // 香
+  if(piece.toLowerCase()==="l"){
+    return dy===0 && dx===forward && pathClear(sx,sy,tx,ty);
+  }
+
+  // 歩
+  if(piece.toLowerCase()==="p"){
+    return dx===forward && dy===0;
+  }
+
+  // 飛車
+  if(piece.toLowerCase()==="r"){
+    return (dx===0 || dy===0) && pathClear(sx,sy,tx,ty);
+  }
+
+  // 角
+  if(piece.toLowerCase()==="b"){
+    return absX===absY && pathClear(sx,sy,tx,ty);
   }
 
   return false;
 }
 
-function handleClick(x, y) {
-  const piece = board[x][y];
+function handleClick(x,y){
+  let piece = board[x][y];
 
-  if (!selected) {
-    if (piece === ".") return;
+  if(!selected){
+    if(piece === ".") return;
 
-    if (currentPlayer === "P" && piece === piece.toLowerCase()) return;
-    if (currentPlayer === "p" && piece === piece.toUpperCase()) return;
+    if(currentPlayer==="P" && piece===piece.toLowerCase()) return;
+    if(currentPlayer==="p" && piece===piece.toUpperCase()) return;
 
-    selected = [x, y];
+    selected = [x,y];
   } else {
-    const [sx, sy] = selected;
-    const movingPiece = board[sx][sy];
+    let [sx,sy] = selected;
+    let moving = board[sx][sy];
 
-    if (isValidMove(movingPiece, sx, sy, x, y)) {
-      board[x][y] = movingPiece;
-      board[sx][sy] = ".";
-
-      currentPlayer = currentPlayer === "P" ? "p" : "P";
+    if(isValidMove(moving,sx,sy,x,y)){
+      if(board[x][y]==="." || isEnemy(moving, board[x][y])){
+        board[x][y] = moving;
+        board[sx][sy] = ".";
+        currentPlayer = currentPlayer==="P" ? "p" : "P";
+      }
     }
 
     selected = null;
