@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>将棋（全駒対応）</title>
+<title>将棋（成り対応）</title>
 <style>
   body { text-align: center; font-family: sans-serif; }
   table { border-collapse: collapse; margin: auto; }
@@ -10,7 +10,7 @@
     width: 50px;
     height: 50px;
     border: 1px solid black;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
   }
   .selected { background: yellow; }
@@ -18,7 +18,7 @@
 </head>
 <body>
 
-<h1>将棋（全駒）</h1>
+<h1>将棋（成りあり）</h1>
 <p id="turn"></p>
 <table id="board"></table>
 
@@ -28,22 +28,36 @@ let board = [];
 let currentPlayer = "P";
 let selected = null;
 
-// 駒表示
+// 表示
 const PIECES = {
   "K":"王","R":"飛","B":"角","G":"金","S":"銀","N":"桂","L":"香","P":"歩",
-  "k":"玉","r":"飛","b":"角","g":"金","s":"銀","n":"桂","l":"香","p":"歩"
+  "+R":"龍","+B":"馬","+S":"成銀","+N":"成桂","+L":"成香","+P":"と",
+  "k":"玉","r":"飛","b":"角","g":"金","s":"銀","n":"桂","l":"香","p":"歩",
+  "+r":"龍","+b":"馬","+s":"成銀","+n":"成桂","+l":"成香","+p":"と"
 };
+
+// 成り変換
+function promote(piece){
+  if(piece.startsWith("+")) return piece;
+  if(["P","L","N","S","B","R","p","l","n","s","b","r"].includes(piece)){
+    return "+" + piece;
+  }
+  return piece;
+}
+
+// 成り判定
+function inPromotionZone(player, x){
+  return player==="P" ? x <= 2 : x >= 6;
+}
 
 function initBoard() {
   board = Array.from({length: SIZE}, () => Array(SIZE).fill("."));
 
-  // 後手
   board[0] = ["l","n","s","g","k","g","s","n","l"];
   board[1][1] = "r";
   board[1][7] = "b";
   for(let i=0;i<9;i++) board[2][i] = "p";
 
-  // 先手
   board[8] = ["L","N","S","G","K","G","S","N","L"];
   board[7][7] = "R";
   board[7][1] = "B";
@@ -77,7 +91,8 @@ function drawBoard() {
 
 function isEnemy(p1, p2){
   if(p2 === ".") return false;
-  return (p1 === p1.toUpperCase()) !== (p2 === p2.toUpperCase());
+  return (p1.replace("+","").toUpperCase() === p1.replace("+","")) !==
+         (p2.replace("+","").toUpperCase() === p2.replace("+",""));
 }
 
 function pathClear(sx,sy,tx,ty){
@@ -99,15 +114,25 @@ function isValidMove(piece, sx, sy, tx, ty){
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  const forward = (piece === piece.toUpperCase()) ? -1 : 1;
+  const base = piece.replace("+","");
+  const forward = (base === base.toUpperCase()) ? -1 : 1;
+
+  // 成り駒（金と同じ動き）
+  if(piece.startsWith("+") && base !== "B" && base !== "R"){
+    return (
+      (dx===forward && Math.abs(dy)<=1) ||
+      (dx===0 && absY===1) ||
+      (dx===-forward && dy===0)
+    );
+  }
 
   // 王
-  if(piece.toLowerCase()==="k"){
+  if(base==="K"){
     return absX<=1 && absY<=1;
   }
 
   // 金
-  if(piece.toLowerCase()==="g"){
+  if(base==="G"){
     return (
       (dx===forward && Math.abs(dy)<=1) ||
       (dx===0 && absY===1) ||
@@ -116,7 +141,7 @@ function isValidMove(piece, sx, sy, tx, ty){
   }
 
   // 銀
-  if(piece.toLowerCase()==="s"){
+  if(base==="S"){
     return (
       (dx===forward && Math.abs(dy)<=1) ||
       (dx===-forward && absY===1)
@@ -124,28 +149,30 @@ function isValidMove(piece, sx, sy, tx, ty){
   }
 
   // 桂
-  if(piece.toLowerCase()==="n"){
+  if(base==="N"){
     return dx===2*forward && absY===1;
   }
 
   // 香
-  if(piece.toLowerCase()==="l"){
-    return dy===0 && dx===forward && pathClear(sx,sy,tx,ty);
+  if(base==="L"){
+    return dy===0 && dx*forward > 0 && pathClear(sx,sy,tx,ty);
   }
 
   // 歩
-  if(piece.toLowerCase()==="p"){
+  if(base==="P"){
     return dx===forward && dy===0;
   }
 
-  // 飛車
-  if(piece.toLowerCase()==="r"){
-    return (dx===0 || dy===0) && pathClear(sx,sy,tx,ty);
+  // 飛（成り含む）
+  if(base==="R"){
+    if((dx===0 || dy===0) && pathClear(sx,sy,tx,ty)) return true;
+    if(piece.startsWith("+")) return absX===1 && absY===1;
   }
 
-  // 角
-  if(piece.toLowerCase()==="b"){
-    return absX===absY && pathClear(sx,sy,tx,ty);
+  // 角（成り含む）
+  if(base==="B"){
+    if(absX===absY && pathClear(sx,sy,tx,ty)) return true;
+    if(piece.startsWith("+")) return (absX===1 && dy===0) || (absY===1 && dx===0);
   }
 
   return false;
@@ -157,8 +184,8 @@ function handleClick(x,y){
   if(!selected){
     if(piece === ".") return;
 
-    if(currentPlayer==="P" && piece===piece.toLowerCase()) return;
-    if(currentPlayer==="p" && piece===piece.toUpperCase()) return;
+    if(currentPlayer==="P" && piece.replace("+","")===piece.replace("+","").toLowerCase()) return;
+    if(currentPlayer==="p" && piece.replace("+","")===piece.replace("+","").toUpperCase()) return;
 
     selected = [x,y];
   } else {
@@ -167,7 +194,16 @@ function handleClick(x,y){
 
     if(isValidMove(moving,sx,sy,x,y)){
       if(board[x][y]==="." || isEnemy(moving, board[x][y])){
-        board[x][y] = moving;
+
+        // 成りチェック
+        let newPiece = moving;
+        if(inPromotionZone(currentPlayer, x) || inPromotionZone(currentPlayer, sx)){
+          if(confirm("成りますか？")){
+            newPiece = promote(moving);
+          }
+        }
+
+        board[x][y] = newPiece;
         board[sx][sy] = ".";
         currentPlayer = currentPlayer==="P" ? "p" : "P";
       }
