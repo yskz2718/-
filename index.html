@@ -202,20 +202,25 @@ if(pl==="p" && board[i][j]==="k") return [i,j];
 }
 }
 
-function isCheck(pl){
-let k = findKing(pl);
-if(!k) return false;
+function isCheck(player){
+  let kingPos = findKing(player);
+  if(!kingPos) return false;
 
-for(let i=0;i<9;i++){
-for(let j=0;j<9;j++){
-let p = board[i][j];
+  for(let i=0;i<9;i++){
+    for(let j=0;j<9;j++){
+      let p = board[i][j];
+      if(p === ".") continue;
 
-if(p==="." || !isEnemy(pl==="P"?"K":"k", p)) continue;
+      // 👇 ここが超重要（敵だけ見る）
+      if(player === "P" && isUpper(p)) continue;
+      if(player === "p" && !isUpper(p)) continue;
 
-if(canMove(p,i,j,k[0],k[1])) return true;
-}
-}
-return false;
+      if(canMove(p, i, j, kingPos[0], kingPos[1])){
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function isLegalMove(sx,sy,tx,ty){
