@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>将棋 完全安定版</title>
+<title>将棋 完全版</title>
 <style>
 body { text-align:center; font-family:sans-serif; }
 table { border-collapse: collapse; margin:auto; }
@@ -13,8 +13,6 @@ td {
   font-size:20px;
 }
 .selected { background:yellow; }
-
-/* 後手の駒を回転 */
 .enemy { transform: rotate(180deg); }
 </style>
 </head>
@@ -203,24 +201,24 @@ if(pl==="p" && board[i][j]==="k") return [i,j];
 }
 
 function isCheck(player){
-  let kingPos = findKing(player);
-  if(!kingPos) return false;
+let kingPos = findKing(player);
+if(!kingPos) return false;
 
-  for(let i=0;i<9;i++){
-    for(let j=0;j<9;j++){
-      let p = board[i][j];
-      if(p === ".") continue;
+for(let i=0;i<9;i++){
+for(let j=0;j<9;j++){
+let p = board[i][j];
+if(p === ".") continue;
 
-      // 👇 ここが超重要（敵だけ見る）
-      if(player === "P" && isUpper(p)) continue;
-      if(player === "p" && !isUpper(p)) continue;
+// 敵だけを見る（修正済み）
+if(player === "P" && isUpper(p)) continue;
+if(player === "p" && !isUpper(p)) continue;
 
-      if(canMove(p, i, j, kingPos[0], kingPos[1])){
-        return true;
-      }
-    }
-  }
-  return false;
+if(canMove(p,i,j,kingPos[0],kingPos[1])){
+return true;
+}
+}
+}
+return false;
 }
 
 function isLegalMove(sx,sy,tx,ty){
@@ -300,6 +298,7 @@ hands[currentPlayer].push(base(board[x][y]).toUpperCase());
 
 let moved = board[sx][sy];
 
+// ⭐ 成りは「相手陣に入るときだけ」
 if(shouldPromote(moved,sx,x)){
 if(confirm("成りますか？")){
 moved = "+" + moved;
